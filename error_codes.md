@@ -55,6 +55,11 @@
 | 13037 | Overlapping outcome collections                             | [NUT-CTF][CTF], [NUT-CTF-split-merge][CTF-split-merge]                                           |
 | 13038 | Incomplete partition                                        | [NUT-CTF][CTF], [NUT-CTF-split-merge][CTF-split-merge]                                           |
 | 13040 | Maximum condition depth exceeded                            | [NUT-CTF-split-merge][CTF-split-merge]                                                           |
+| 13050 | Creator fee already claimed                                 | [NUT-CTF-creator-fee][CTF-creator-fee]                                                           |
+| 13051 | Creator fee not supported                                   | [NUT-CTF-creator-fee][CTF-creator-fee]                                                           |
+| 13052 | Fee claim total supply mismatch                             | [NUT-CTF-creator-fee][CTF-creator-fee]                                                           |
+| 13053 | Condition not in vesting period                             | [NUT-CTF-creator-fee][CTF-creator-fee]                                                           |
+| 13054 | No accumulated fees                                         | [NUT-CTF-creator-fee][CTF-creator-fee]                                                           |
 
 [00]: 00.md
 [01]: 01.md
@@ -76,3 +81,4 @@
 [CTF]: CTF.md
 [CTF-split-merge]: CTF-split-merge.md
 [CTF-numeric]: CTF-numeric.md
+[CTF-creator-fee]: CTF-creator-fee.md

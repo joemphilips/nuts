@@ -16,7 +16,7 @@ The oracle signature scheme is compatible with the [DLC specification](https://g
 
 Caution: Applications that rely on oracle resolution must verify that the oracle is trustworthy and check via the mint's [info][06] endpoint that NUT-CTF is supported.
 
-**Related specifications:** [NUT-CTF-split-merge][CTF-split-merge] defines split/merge operations for creating and dissolving complete sets of conditional tokens. [NUT-CTF-numeric][CTF-numeric] extends this framework with numeric outcome conditions.
+**Related specifications:** [NUT-CTF-split-merge][CTF-split-merge] defines split/merge operations for creating and dissolving complete sets of conditional tokens. [NUT-CTF-numeric][CTF-numeric] extends this framework with numeric outcome conditions. [NUT-CTF-creator-fee][CTF-creator-fee] defines a creator fee mechanism where condition creators receive tradeable fee claim tokens.
 
 ## Terminology
 
@@ -222,21 +222,26 @@ Registers a new condition. Does not create keysets — keysets are created durin
 {
   "threshold": <int>,
   "tags": <Array[Array[str]]>,
-  "announcements": <Array[hex_str]>
+  "announcements": <Array[hex_str]>,
+  "creator_fee_outputs": <Array[BlindedMessage]>
 }
 ```
 
 - `threshold`: Minimum oracles required (default: 1)
 - `tags`: [NIP-88][NIP-88] tag array
 - `announcements`: Hex-encoded oracle announcement TLV bytes
+- `creator_fee_outputs` (optional): Blinded messages for fee claim tokens ([NUT-CTF-creator-fee][CTF-creator-fee]). `sum(outputs)` MUST equal the mint's `creator_fee_total_supply`.
 
 **Response** of `Bob`:
 
 ```json
 {
-  "condition_id": <hex_str>
+  "condition_id": <hex_str>,
+  "creator_fee_signatures": <Array[BlindSignature]>
 }
 ```
+
+- `creator_fee_signatures` (optional): Present when fee claim tokens are issued to this caller. See [NUT-CTF-creator-fee][CTF-creator-fee].
 
 ```bash
 curl -X POST https://mint.host:3338/v1/conditions \
@@ -248,11 +253,11 @@ curl -X POST https://mint.host:3338/v1/conditions \
 
 1. Parses and verifies announcement signatures (error 13011 if failed)
 2. Computes `condition_id`
-3. If condition exists with matching config: returns existing `condition_id` (idempotent)
+3. If condition exists with matching config: returns existing `condition_id` (idempotent). `creator_fee_outputs` is ignored unless no one has registered with `creator_fee_outputs` yet (see [NUT-CTF-creator-fee][CTF-creator-fee]).
 4. If condition exists with different config: error 13028
-5. If new: stores and returns `condition_id`
+5. If new: stores and returns `condition_id`. If `creator_fee_outputs` is provided, issues fee claim tokens (see [NUT-CTF-creator-fee][CTF-creator-fee]).
 
-The mint MUST make condition registration idempotent. Mints MAY require [NUT-21][21] or [NUT-22][22] authentication for DoS prevention.
+The mint MUST make condition registration idempotent. Mints MAY require [NUT-21][21] or [NUT-22][22] authentication for DoS prevention. Mints MAY also use [NUT-24][24] to require payment for condition registration, preventing resource abuse from excessive condition creation.
 
 ### Register Partition
 
@@ -306,7 +311,7 @@ curl -X POST https://mint.host:3338/v1/conditions/a1b2c3d4.../partitions \
 
 **Idempotency:** The mint MUST make partition registration idempotent.
 
-**DoS prevention:** Mints MAY require [NUT-21][21] or [NUT-22][22] authentication.
+**DoS prevention:** Mints MAY require [NUT-21][21] or [NUT-22][22] authentication. Mints MAY also use [NUT-24][24] to require payment for partition registration, since each new partition creates keysets and consumes resources.
 
 ## Outcome Collection ID
 
@@ -352,7 +357,7 @@ Mints MUST return results ordered by `registered_at` ascending. Same pagination 
 
 **Response** of `Bob`:
 
-Structurally identical to `GET /v1/keysets` ([NUT-02][02]) with four additional fields:
+Structurally identical to `GET /v1/keysets` ([NUT-02][02]) with additional fields:
 
 ```json
 {
@@ -366,11 +371,14 @@ Structurally identical to `GET /v1/keysets` ([NUT-02][02]) with four additional 
       "condition_id": <hex_str>,
       "outcome_collection": <str>,
       "outcome_collection_id": <hex_str>,
-      "registered_at": <int>
+      "registered_at": <int>,
+      "kind": "conditional"
     }
   ]
 }
 ```
+
+- `kind`: `"conditional"` for outcome collection keysets. When [NUT-CTF-creator-fee][CTF-creator-fee] is supported, `"market_creator_fee"` keysets also appear with additional fields (`total_supply`, `accumulated_fee`). See [NUT-CTF-creator-fee][CTF-creator-fee] for details.
 
 ```bash
 curl -X GET https://mint.host:3338/v1/conditional_keysets?active=true
@@ -446,6 +454,8 @@ Mints implementing NUT-CTF MUST enforce these rules on [NUT-03][03] swap:
 - Swaps mixing conditional and regular keysets: **MUST reject**
 
 All conditional-to-regular conversions go through `POST /v1/redeem_outcome`.
+
+When [NUT-CTF-creator-fee][CTF-creator-fee] is supported and the condition was registered with `creator_fee_outputs`, swaps of conditional tokens for that condition MUST deduct the creator fee from the output amount. See [NUT-CTF-creator-fee][CTF-creator-fee] for details.
 
 ## Redemption Verification
 
@@ -528,6 +538,8 @@ The [NUT-06][06] `MintMethodSetting` indicates support for this feature:
 [14]: 14.md
 [21]: 21.md
 [22]: 22.md
+[24]: 24.md
 [CTF-split-merge]: CTF-split-merge.md
 [CTF-numeric]: CTF-numeric.md
+[CTF-creator-fee]: CTF-creator-fee.md
 [NIP-88]: https://github.com/nostr-protocol/nips/pull/1681
